@@ -10,14 +10,22 @@ import ListItem from '@mui/material/ListItem';
 import ListItemText from '@mui/material/ListItemText';
 import './App.css'
 import * as amplify from './amplify'
-import { Authenticator, Alert } from '@aws-amplify/ui-react';
+import { Authenticator, Alert, useAuthenticator, Loader } from '@aws-amplify/ui-react';
 import '@aws-amplify/ui-react/styles.css';
+import { Amplify } from 'aws-amplify';
+import awsExports from './aws-exports';
+
+Amplify.configure(awsExports);
+
 
 function App() {
+  const { route, signOut, user} = useAuthenticator(context => [context.route, context.signOut, context.user]);
+
   const label = { inputProps: { 'aria-label': 'Checkbox demo' } };
   const [tasks, setTasks] = useState([])
   const [taskTitle, setTaskTitle] = useState("")
   const [errorMsg, setErrorMsg] = useState('');
+  const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
     async function getTasks() {
@@ -27,18 +35,21 @@ function App() {
     }
 
     getTasks()
-  }, [])
+  }, [user])
 
   const createTask = async (e) => {
     e.preventDefault()
+    setIsLoading(true)
     try {
       const task = await amplify.createTask(taskTitle)
       console.log(task)
+      setIsLoading(false)
       setTasks([task, ...tasks])
       setTaskTitle("")
       setErrorMsg("")
     } catch {
       setErrorMsg("You cant create it.")
+      setIsLoading(false)
     }
 
   }
@@ -56,12 +67,11 @@ function App() {
     }
   }
 
-
   const updateTask = async (id) => {
     const task = tasks.find(item => item.id == id)
-    task.completed = !task.completed
     try {
-      const updatedTask = await amplify.completedTask(id, task.completed)
+      const updatedTask = await amplify.completedTask(id, !task.completed)
+      task.completed = !task.completed
       console.log(updatedTask)
       setTasks([...tasks])
       setErrorMsg("")
@@ -70,14 +80,15 @@ function App() {
     }
   };
 
+
+
   return (
     <div className="App">
       <h1>To Do Lists</h1>
 
       {tasks.map(task => (
         <List key={task.id} sx={{ width: '100%', maxWidth: 400, bgcolor: 'background.paper' }}>
-          <ListItem
-          >
+          <ListItem>
             <ListItemText id={task.id} primary={task.title} />
             <Checkbox {...label} checked={task.completed == 1}
               onChange={() => updateTask(task.id)} />
@@ -89,18 +100,21 @@ function App() {
         </List>
       ))}
       {errorMsg && <Alert variation="info">{errorMsg}</Alert>}
-      <Authenticator>
-        {({ signOut, user }) => (
-          <form onSubmit={createTask} className="create-container">
-            <TextField id="standard-basic" label="Create New ToDo" variant="outlined" value={taskTitle}
-              onChange={e => setTaskTitle(e.target.value)} size="small" />
-            <Button variant="contained" type="submit" >Create</Button>
-            <Button onClick={signOut} variant="contained">Sign Out</Button>
-          </form>
-        )}
-      </Authenticator>
+      {isLoading && <Loader variation="linear" />}
+      {route === 'authenticated' ? (
+                  <form onSubmit={createTask} className="create-container">
+                  <TextField id="standard-basic" label="Create New ToDo" variant="outlined" value={taskTitle}
+                    onChange={e => setTaskTitle(e.target.value)} size="small" />
+                  <Button variant="contained" type="submit" >Create</Button>
+                  <Button onClick={signOut} variant="contained">Sign Out</Button>
+                </form>
+      ) : <Authenticator/>}
     </div>
   )
 }
 
-export default App
+export default () => (
+  <Authenticator.Provider>
+    <App />
+  </Authenticator.Provider>
+);
