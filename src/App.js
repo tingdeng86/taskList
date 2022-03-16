@@ -12,7 +12,7 @@ import './App.css'
 import * as amplify from './amplify'
 import { Authenticator, Alert, useAuthenticator, Loader } from '@aws-amplify/ui-react';
 import '@aws-amplify/ui-react/styles.css';
-import { Amplify } from 'aws-amplify';
+import { Amplify, Auth } from 'aws-amplify';
 import awsExports from './aws-exports';
 
 Amplify.configure(awsExports);
@@ -27,10 +27,13 @@ function App() {
   const [errorMsg, setErrorMsg] = useState('');
   const [isLoading, setIsLoading] = useState(false)
 
+
   useEffect(() => {
     async function getTasks() {
       const tasks = await amplify.getTasks()
+      // const info = await Auth.currentUserInfo();
       console.log(tasks)
+      // console.log(info)
       setTasks(tasks)
     }
 
